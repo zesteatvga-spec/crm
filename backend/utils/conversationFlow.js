@@ -152,7 +152,8 @@ const startMetaTemplate = async (phone, template, options = {}) => {
     // Marketing Messages API (/marketing_messages) instead of /messages.
     return await sendMetaTemplate(sp, template.name, template.language, components, {
       category: template.category,
-    });  } catch (e) {
+    });
+  } catch (e) {
     console.log(`❌ Failed to send Meta Template to ${sp}:`, e.message);
     throw e;
   }

@@ -242,6 +242,7 @@ export default function WhatsappMessage() {
   const [chatSearch, setChatSearch] = useState('');
   const [contactFilter, setContactFilter] = useState('ALL'); // ALL, SAP FICO, General, New
   const [chatMessageText, setChatMessageText] = useState('');
+  const [chatOtpCode, setChatOtpCode] = useState('');
   const [selectedChatTemplate, setSelectedChatTemplate] = useState('');
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
   const [sendingChatMsg, setSendingChatMsg] = useState(false);
@@ -1033,6 +1034,22 @@ export default function WhatsappMessage() {
 
     const tmpl = templates.find(t => (t._id === tmplId || t.id === tmplId || t.metaTemplateId === tmplId || t.name === tmplId));
     const targetPhone = selectedContact.phone;
+
+    // AUTHENTICATION templates carry a one-time code that must be typed in. It is
+    // sent as both the body parameter and the copy-code button parameter.
+    const isAuthTemplate = String(tmpl?.category || '').toUpperCase() === 'AUTHENTICATION';
+    const otp = chatOtpCode.trim();
+    if (isAuthTemplate) {
+      if (!otp) {
+        showToast('Enter the one-time code to send this authentication template.', 'error');
+        return;
+      }
+      if (!/^\S{4,10}$/.test(otp)) {
+        showToast('The one-time code must be 4-10 characters with no spaces.', 'error');
+        return;
+      }
+    }
+
     setSendingChatMsg(true);
 
     try {
@@ -1041,13 +1058,15 @@ export default function WhatsappMessage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           templateId: tmpl?._id || tmplId,
-          phones: [targetPhone]
+          phones: [targetPhone],
+          otpCode: isAuthTemplate ? otp : undefined
         })
       });
       const data = await res.json();
       if (res.ok && data.success) {
         showToast(`Template '${tmpl?.name || 'Meta Template'}' sent to ${selectedContact.name || targetPhone}! 🎉`, "success");
         setSelectedChatTemplate('');
+        setChatOtpCode('');
 
         let parsedButtons = [];
         try {
@@ -1062,7 +1081,9 @@ export default function WhatsappMessage() {
         const tempMsg = {
           id: `opt_tmpl_${Date.now()}`,
           type: 'OUTGOING_TEMPLATE',
-          text: tmpl?.body_text || tmpl?.message || 'Template Message Sent',
+          text: isAuthTemplate
+            ? String(tmpl?.body_text || tmpl?.message || 'Verification code sent').replace('{{1}}', otp)
+            : (tmpl?.body_text || tmpl?.message || 'Template Message Sent'),
           templateName: tmpl?.name || 'Meta Template',
           header_image_url: tmpl?.header_image_url || tmpl?.imageUrl || '',
           buttons: parsedButtons,
@@ -1086,6 +1107,13 @@ export default function WhatsappMessage() {
       setSendingChatMsg(false);
     }
   };
+
+  // The template currently picked in the chat composer, and whether it needs an OTP.
+  const selectedChatTemplateObj = selectedChatTemplate
+    ? templates.find(t => (t._id === selectedChatTemplate || t.id === selectedChatTemplate
+      || t.metaTemplateId === selectedChatTemplate || t.name === selectedChatTemplate))
+    : null;
+  const needsChatOtp = String(selectedChatTemplateObj?.category || '').toUpperCase() === 'AUTHENTICATION';
 
   // Handle image upload from file picker
   const handleImageFileChange = (e) => {
@@ -2088,20 +2116,44 @@ export default function WhatsappMessage() {
                       </div>
 
                       {selectedChatTemplate && (
-                        <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
-                          <span className="text-[11px] font-mono font-bold text-[#00a884]">Ready to Send to {selectedContact.name || selectedContact.phone}</span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              handleSendTemplateInChat(selectedChatTemplate);
-                              setShowTemplatePicker(false);
-                            }}
-                            disabled={sendingChatMsg}
-                            className="px-4 py-2 rounded-xl bg-[#00a884] hover:bg-emerald-600 text-white font-black text-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-xs"
-                          >
-                            <Send className="w-3.5 h-3.5" />
-                            <span>Send Template Message</span>
-                          </button>
+                        <div className="pt-2 border-t border-slate-100 space-y-2">
+                          {needsChatOtp && (
+                            <div className="rounded-xl border border-amber-300 bg-amber-50/80 p-2">
+                              <label className="block">
+                                <span className="text-[10px] font-extrabold uppercase tracking-wide text-amber-900">
+                                  One-time code
+                                </span>
+                                <input
+                                  type="text"
+                                  value={chatOtpCode}
+                                  onChange={(e) => setChatOtpCode(e.target.value)}
+                                  placeholder="123456"
+                                  maxLength={10}
+                                  autoComplete="one-time-code"
+                                  className="mt-1 w-full px-2.5 py-1.5 rounded-lg bg-white border border-amber-300 text-xs font-mono tracking-widest text-slate-800 placeholder-amber-300 focus:outline-none focus:border-amber-500"
+                                />
+                              </label>
+                              <p className="text-[10px] leading-relaxed text-amber-700 mt-1">
+                                Authentication templates require the code. It is sent as the body variable and as the
+                                copy-code button value, and is never stored.
+                              </p>
+                            </div>
+                          )}
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-[11px] font-mono font-bold text-[#00a884]">Ready to Send to {selectedContact.name || selectedContact.phone}</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleSendTemplateInChat(selectedChatTemplate);
+                                setShowTemplatePicker(false);
+                              }}
+                              disabled={sendingChatMsg || (needsChatOtp && !chatOtpCode.trim())}
+                              className="px-4 py-2 rounded-xl bg-[#00a884] hover:bg-emerald-600 text-white font-black text-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-xs"
+                            >
+                              <Send className="w-3.5 h-3.5" />
+                              <span>Send Template Message</span>
+                            </button>
+                          </div>
                         </div>
                       )}
                     </div>

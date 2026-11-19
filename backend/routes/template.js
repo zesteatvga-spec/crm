@@ -316,7 +316,7 @@ const buildRecreatePayload = (template, body) => {
 };
 
 // ── Meta Broadcast runner ─────────────────────────────────────────────────────
-const runMetaBroadcast = async (template, phoneList) => {
+const runMetaBroadcast = async (template, phoneList, options = {}) => {
   let sent = 0, failed = 0;
   console.log(`🚀 Bulk Meta send to ${phoneList.length} contacts...`);
 
@@ -327,7 +327,7 @@ const runMetaBroadcast = async (template, phoneList) => {
     if (cleanP.startsWith('91') && cleanP.length === 12) cleanP = cleanP.slice(2);
 
     try {
-      const sendRes = await ConversationFlow.startMetaTemplate(rawPhone, template);
+      const sendRes = await ConversationFlow.startMetaTemplate(rawPhone, template, options);
       const wamid = sendRes?.messages?.[0]?.id || `tmpl_${Date.now()}_${i}`;
 
       const MessageLog = require('../models/MessageLog');
@@ -395,7 +395,7 @@ const runMetaBroadcast = async (template, phoneList) => {
 // POST /api/template/send-meta
 // Send an approved Meta Template to users
 router.post('/send-meta', async (req, res) => {
-  const { templateId, phones } = req.body;
+  const { templateId, phones, otpCode } = req.body;
   if (!templateId) return res.status(400).json({ success: false, message: 'Template ID required' });
 
   const template = await Template.findById(templateId);
@@ -436,8 +436,36 @@ router.post('/send-meta', async (req, res) => {
   }
   if (!phoneList.length) return res.status(400).json({ success: false, message: 'No contacts to send to' });
 
+  // Authentication templates carry a per-recipient one-time code, so they only
+  // make sense for a single recipient entered in the chat composer. Sending one
+  // code to a whole list would hand the same OTP to every contact.
+  const isAuthentication = String(template.category || '').toUpperCase() === 'AUTHENTICATION';
+  const code = String(otpCode || '').trim();
+  if (isAuthentication) {
+    if (phoneList.length > 1) {
+      return res.status(400).json({
+        success: false,
+        message:
+          'Authentication templates send a one-time code, so only one recipient at a time is allowed. ' +
+          'Send it from the chat composer.',
+      });
+    }
+    if (!code) {
+      return res.status(400).json({
+        success: false,
+        message: 'This is an authentication template — enter the one-time code before sending.',
+      });
+    }
+    if (!/^\S{4,10}$/.test(code)) {
+      return res.status(400).json({
+        success: false,
+        message: 'The one-time code must be 4-10 characters with no spaces.',
+      });
+    }
+  }
+
   res.json({ success: true, total: phoneList.length, message: 'Meta Broadcast started!' });
-  runMetaBroadcast(template, phoneList);
+  runMetaBroadcast(template, phoneList, isAuthentication ? { otpCode: code } : {});
 });
 
 // POST /api/template/schedule

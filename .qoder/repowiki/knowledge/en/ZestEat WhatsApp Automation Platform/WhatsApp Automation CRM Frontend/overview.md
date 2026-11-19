@@ -1,1 +1,0 @@
-React + Vite single-page application providing a landing page, authentication, and an enterprise CRM dashboard for WhatsApp/Instagram integrations, contacts, leads, employees, and task management.

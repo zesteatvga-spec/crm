@@ -1,0 +1,1 @@
+Express 4 + Socket.io 4 on a shared http.Server, Mongoose 7 against MongoDB, JWT (jsonwebtoken) for auth, node-cron for scheduled broadcasts, axios/form-data for Meta Graph API calls, multer for multipart uploads, cloudinary SDK for media hosting, xlsx for spreadsheet import, pino for logging, crypto.pbkdf2Sync for password hashing.

@@ -1,0 +1,1 @@
+Requires a `.env` file with `MONGODB_URI`, `JWT_SECRET`, and `PORT`; start with `npm run dev` (nodemon) or `npm start`. When no URI is provided, it defaults to `mongodb://localhost:27017/mutton_chicken_shop`.

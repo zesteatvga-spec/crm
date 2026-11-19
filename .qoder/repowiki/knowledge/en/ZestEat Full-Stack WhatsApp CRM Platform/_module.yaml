@@ -1,6 +1,6 @@
 schema_version: 1
 module_path: ""
-title: ZestEat WhatsApp Automation Platform
+title: ZestEat Full-Stack WhatsApp CRM Platform
 scope:
     - .kilo/
     - Hackathon.jpeg

@@ -10,6 +10,13 @@
 - [templateBuilder.js](file://backend/utils/templateBuilder.js)
 </cite>
 
+## Update Summary
+**Changes Made**
+- Added comprehensive documentation for the new `/api/template/presets` endpoint
+- Enhanced documentation for the `/api/template/:id/recreate` endpoint with improved error handling
+- Updated error response documentation to reflect structured metadata format
+- Added detailed examples for preset usage and template recreation workflows
+
 ## Table of Contents
 1. [Introduction](#introduction)
 2. [Project Structure](#project-structure)
@@ -23,7 +30,7 @@
 10. [Appendices](#appendices)
 
 ## Introduction
-This document describes the Template Management API for WhatsApp Cloud API templates. It covers template creation, updates, deletion, Meta synchronization, versioning via recreation, media handling, variable substitution, preview generation, approval workflow integration, testing and broadcasting, scheduling, and error handling. The system stores local drafts, mirrors Meta’s state, and enforces Meta’s rules around immutable submitted templates.
+This document describes the Template Management API for WhatsApp Cloud API templates. It covers template creation, updates, deletion, Meta synchronization, versioning via recreation, media handling, variable substitution, preview generation, approval workflow integration, testing and broadcasting, scheduling, and error handling. The system stores local drafts, mirrors Meta's state, and enforces Meta's rules around immutable submitted templates.
 
 ## Project Structure
 The template management feature is implemented primarily in:
@@ -63,6 +70,7 @@ MetaSvc --> MetaAPI["Meta Graph API"]
 
 ## Core Components
 - Template CRUD endpoints: create on Meta, update local drafts or recreate on Meta, delete with optional Meta removal, list templates, import from Meta, sync all templates from Meta.
+- **New**: Category presets endpoint providing predefined template configurations and validation rules.
 - Approval workflow: status polling and pre-send validation against Meta.
 - Versioning: editing a submitted template requires recreation; old version is deleted and a new one is submitted for review.
 - Media handling: resumable upload to Meta for headers, media id for sending, and public URL for dashboard preview.
@@ -152,15 +160,40 @@ Behavior highlights:
 ### Recreate Submitted Templates (POST /api/template/:id/recreate)
 - Deletes the current Meta version and submits a new one with updated content.
 - If deletion succeeds but recreation fails, the record is downgraded to a local draft with a local ID.
+- **Enhanced**: Improved error handling with structured metadata responses.
 
 Workflow:
 - Delete on Meta (optional).
 - Submit new version via shared submit path.
 - Persist updated template with new Meta metadata.
 
+**Updated** Enhanced error handling provides structured metadata responses for better debugging and user feedback.
+
 **Section sources**
 - [template.js:255-287](file://backend/routes/template.js#L255-L287)
 - [template.js:694-723](file://backend/routes/template.js#L694-L723)
+- [template.js:750-782](file://backend/routes/template.js#L750-L782)
+
+### Get Category Presets (GET /api/template/presets)
+- **New Endpoint**: Returns categories, presets, and rules shared with the frontend.
+- Provides predefined template configurations for different categories (MARKETING, UTILITY, AUTHENTICATION).
+- Includes validation rules and field limits for consistent template creation.
+
+Response structure:
+- `categories`: Array of supported template categories
+- `presets`: Predefined template configurations per category
+- `rules`: Validation rules and field limits
+
+Use cases:
+- Frontend initialization with default template structures
+- Dynamic form generation based on available categories
+- Consistent template creation across the application
+
+**New Section**
+
+**Section sources**
+- [template.js:784-788](file://backend/routes/template.js#L784-L788)
+- [templateBuilder.js:543-593](file://backend/utils/templateBuilder.js#L543-L593)
 
 ### Delete Templates (DELETE /api/template/:id)
 - Removes the local record and optionally deletes the Meta template if present.
@@ -230,13 +263,6 @@ Broadcast behavior:
 **Section sources**
 - [template.js:488-504](file://backend/routes/template.js#L488-L504)
 
-### Get Presets (GET /api/template/presets)
-- Returns categories, presets, and rules shared with the frontend.
-
-**Section sources**
-- [template.js:725-729](file://backend/routes/template.js#L725-L729)
-- [templateBuilder.js:502-550](file://backend/utils/templateBuilder.js#L502-L550)
-
 ### Stats Summary (GET /api/template/stats/summary)
 - Aggregates sent/delivered/read/failed counts from message logs.
 - Counts active templates, total contacts, and campaigns.
@@ -290,9 +316,16 @@ Common errors and handling:
 - Media upload failures: Header media resolution may fail for remote downloads or Cloudinary uploads; drafts can still be saved with warnings.
 - Missing Meta credentials: Sync and creation endpoints require configured WABA ID and access token.
 
-Error response patterns:
+**Enhanced Error Response Structure:**
 - Validation errors include field-level details and warnings.
 - Meta errors include structured code, hint, and trace identifiers.
+- Structured metadata includes: `message`, `code`, `subcode`, `type`, `fbtraceId`, `details`, and contextual `hint`.
+
+Error response patterns:
+- Validation errors: `{ success: false, message, validationErrors: [{field, message}], warnings: [] }`
+- Meta errors: `{ success: false, message, metaError: {message, code, subcode, type, fbtraceId, details, hint} }`
+
+**Updated** Enhanced error responses provide structured metadata for better debugging and user experience.
 
 **Section sources**
 - [template.js:222-247](file://backend/routes/template.js#L222-L247)
@@ -301,7 +334,7 @@ Error response patterns:
 - [templateBuilder.js:424-496](file://backend/utils/templateBuilder.js#L424-L496)
 
 ## Conclusion
-The Template Management API provides a robust workflow for creating, validating, syncing, and deploying WhatsApp Cloud API templates. It enforces Meta’s constraints, supports versioning through recreation, integrates media handling for headers and sending, and offers preview and broadcasting capabilities. Proper credential configuration and adherence to validation rules are essential for smooth operation.
+The Template Management API provides a robust workflow for creating, validating, syncing, and deploying WhatsApp Cloud API templates. It enforces Meta's constraints, supports versioning through recreation, integrates media handling for headers and sending, and offers preview and broadcasting capabilities. The new presets endpoint enables dynamic template configuration, while enhanced error responses improve debugging and user experience. Proper credential configuration and adherence to validation rules are essential for smooth operation.
 
 [No sources needed since this section summarizes without analyzing specific files]
 
@@ -387,6 +420,18 @@ boolean isActive
 - [template.js:547-692](file://backend/routes/template.js#L547-L692)
 - [template.js:694-723](file://backend/routes/template.js#L694-L723)
 
+#### Use Category Presets
+- Steps:
+  - Call GET /api/template/presets to retrieve available categories and presets.
+  - Use the returned presets to initialize template forms with appropriate defaults.
+  - Apply category-specific validation rules from the rules object.
+
+**New Section**
+
+**Section sources**
+- [template.js:784-788](file://backend/routes/template.js#L784-L788)
+- [templateBuilder.js:543-593](file://backend/utils/templateBuilder.js#L543-L593)
+
 #### Insert Dynamic Content at Send Time
 - Use sample values defined in the template body to map variables to dynamic values when sending.
 - The broadcast runner logs the template text and associated metadata.
@@ -399,7 +444,72 @@ boolean isActive
 - Meta errors: structured objects with code, hint, and trace info.
 - Media failures: warnings included when header media cannot be prepared; drafts remain saveable.
 
+**Enhanced** Error responses now include structured metadata with detailed information for debugging.
+
 **Section sources**
 - [templateBuilder.js:408-418](file://backend/utils/templateBuilder.js#L408-L418)
 - [templateBuilder.js:424-496](file://backend/utils/templateBuilder.js#L424-L496)
 - [template.js:222-247](file://backend/routes/template.js#L222-L247)
+
+### Category Presets Structure
+The presets endpoint returns a comprehensive structure for template initialization:
+
+```json
+{
+  "success": true,
+  "categories": ["MARKETING", "UTILITY", "AUTHENTICATION"],
+  "presets": {
+    "MARKETING": {
+      "label": "Marketing",
+      "description": "Promotions, offers, product launches, re-engagement.",
+      "header_type": "IMAGE",
+      "body_text": "Hi {{1}}! 🎉 Our festive offer is live — get {{2}} off your next order at ZestEat. Tap below to browse the menu.",
+      "footer_text": "ZestEat • Reply STOP to opt out",
+      "samples": ["Priya", "25%"],
+      "buttons": [
+        {"type": "URL", "text": "View Offer", "url": "https://www.zesteat.in/"},
+        {"type": "QUICK_REPLY", "text": "Stop Promos"}
+      ]
+    },
+    "UTILITY": {
+      "label": "Utility", 
+      "description": "Order updates, receipts, delivery and account notifications.",
+      "header_type": "TEXT",
+      "header_text": "Order Confirmed",
+      "body_text": "Hi {{1}}, your order {{2}} for {{3}} has been confirmed and will be delivered by {{4}}. Track it from your account.",
+      "footer_text": "ZestEat Support • +91 8566856789",
+      "samples": ["Priya", "ORD-10482", "₹1,299", "6:30 PM"],
+      "buttons": [
+        {"type": "URL", "text": "Track Order", "url": "https://www.zesteat.in/orders"},
+        {"type": "PHONE_NUMBER", "text": "Call Support", "phone_number": "+918566856789"}
+      ]
+    },
+    "AUTHENTICATION": {
+      "label": "Authentication",
+      "description": "One-time passcodes. Meta generates the body and Copy-code button.",
+      "header_type": "NONE",
+      "body_text": "",
+      "footer_text": "",
+      "samples": [],
+      "buttons": [{"type": "OTP"}],
+      "code_expiration_minutes": 10
+    }
+  },
+  "rules": {
+    "nameMax": 512,
+    "headerTextMax": 60,
+    "bodyMax": 1024,
+    "footerMax": 60,
+    "buttonTextMax": 20,
+    "maxButtonsTotal": 10,
+    "quickReplyMax": 10,
+    "urlButtonMax": 2,
+    "phoneButtonMax": 1
+  }
+}
+```
+
+**New Section**
+
+**Section sources**
+- [templateBuilder.js:543-593](file://backend/utils/templateBuilder.js#L543-L593)

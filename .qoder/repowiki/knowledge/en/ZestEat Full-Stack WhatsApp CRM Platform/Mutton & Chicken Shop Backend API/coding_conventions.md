@@ -1,0 +1,4 @@
+- Route handlers return a uniform JSON envelope of `{ success, message?, data? }` with appropriate HTTP status codes instead of throwing raw errors.
+- External API clients (Meta Graph API, Cloudinary) live as dedicated modules under `utils/` that centralize credential fetching, request construction, and error wrapping, keeping route files free of HTTP boilerplate.
+- Mongoose schemas declare field constraints inline (required, trim, lowercase, enum, default) and attach password-related helpers as `statics` and `methods` before exporting via `mongoose.model`.
+- Environment variables are read directly from `process.env` with fallback defaults (e.g., `JWT_SECRET || 'aotms_secret_salt_2026'`) rather than being imported from a config module.

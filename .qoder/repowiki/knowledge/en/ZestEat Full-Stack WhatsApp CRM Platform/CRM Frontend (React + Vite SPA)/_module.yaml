@@ -1,6 +1,6 @@
 schema_version: 1
 module_path: frontend
-title: WhatsApp Automation CRM Frontend
+title: CRM Frontend (React + Vite SPA)
 scope:
     - frontend/
 source_files: []

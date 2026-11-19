@@ -1,0 +1,1 @@
+Full-stack platform pairing a React/Vite CRM frontend with an Express/Socket.io backend that automates Meta WhatsApp Business API messaging for restaurant ordering and campaign management.

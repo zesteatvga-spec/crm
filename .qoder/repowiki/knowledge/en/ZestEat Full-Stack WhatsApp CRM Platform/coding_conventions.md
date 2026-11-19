@@ -1,0 +1,1 @@
+- Cross-service communication is defined by route paths and request/response shapes rather than shared types or generated clients.

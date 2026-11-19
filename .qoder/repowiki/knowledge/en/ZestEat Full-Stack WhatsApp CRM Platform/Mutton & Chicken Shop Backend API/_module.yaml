@@ -1,6 +1,6 @@
 schema_version: 1
 module_path: backend
-title: Mutton & Chicken Shop WhatsApp Automation Backend
+title: Mutton & Chicken Shop Backend API
 scope:
     - backend/
 source_files: []

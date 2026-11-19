@@ -85,13 +85,31 @@ export default function WhatsappBlast() {
           const headerComp = Array.isArray(t.components) ? t.components.find(c => c.type === 'HEADER') : null;
           const buttonsComp = Array.isArray(t.components) ? t.components.find(c => c.type === 'BUTTONS') : null;
 
-          let headerType = t.header_type || (t.imageUrl ? 'IMAGE' : (headerComp ? (headerComp.format || 'NONE') : 'NONE'));
-          let headerText = t.header_text || (headerComp?.format === 'TEXT' ? (headerComp.text || '') : '');
-          let headerImageUrl = t.imageUrl || t.header_image_url || (headerComp?.example?.header_handle?.[0] || '');
-          let headerContent = headerImageUrl || headerText || t.header_content || '';
-          let bodyText = t.message || bodyComp?.text || t.body_text || t.title || 'Hello {{1}}!';
-          let footerText = t.footer || footerComp?.text || t.footer_text || '';
-          let buttonsList = t.buttons || (buttonsComp?.buttons || []);
+          // Documents imported or synced from Meta keep the schema defaults here
+          // ('NONE' and []), and both are truthy — so a plain `a || b` never falls
+          // through to the raw components payload. Treat them as absent instead.
+          const mirroredHeader = String(t.header_type || '').toUpperCase();
+          const headerCompFormat = String(headerComp?.format || '').toUpperCase();
+          const headerType = mirroredHeader && mirroredHeader !== 'NONE'
+            ? mirroredHeader
+            : headerCompFormat;
+          const headerText = t.header_text
+            || (headerCompFormat === 'TEXT' ? (headerComp?.text || '') : '');
+
+          // A header_handle is a resumable-upload token ("4::..."), never an image
+          // source, and /uploads paths belong to the backend, not this app's host.
+          let headerImageUrl = '';
+          for (const candidate of [t.header_image_url, t.imageUrl, headerComp?.example?.header_handle?.[0]]) {
+            const value = typeof candidate === 'string' ? candidate.trim() : '';
+            if (/^https?:\/\//i.test(value)) { headerImageUrl = value; break; }
+            if (value.startsWith('/uploads')) { headerImageUrl = `${getApiBase()}${value}`; break; }
+          }
+          const headerContent = headerImageUrl || headerText || t.header_content || '';
+
+          const mirroredButtons = Array.isArray(t.buttons) ? t.buttons : [];
+          const buttonsList = mirroredButtons.length > 0
+            ? mirroredButtons
+            : (Array.isArray(buttonsComp?.buttons) ? buttonsComp.buttons : []);
 
           return {
             ...t,
@@ -101,8 +119,8 @@ export default function WhatsappBlast() {
             header_text: headerText,
             header_image_url: headerImageUrl,
             header_content: headerContent,
-            body_text: bodyText,
-            footer_text: footerText,
+            body_text: bodyComp?.text || t.message || t.body_text || t.title || 'Hello {{1}}!',
+            footer_text: footerComp?.text || t.footer || t.footer_text || '',
             buttons: buttonsList
           };
         });
@@ -601,9 +619,19 @@ export default function WhatsappBlast() {
               <div className="p-3 bg-[#efeae2] flex-1 overflow-y-auto space-y-3 text-xs" style={{ minHeight: '340px' }}>
                 {selectedTemplate ? (
                   <div className="bg-white rounded-2xl rounded-tl-none p-3 shadow-sm border border-slate-200/60 space-y-2">
-                    {selectedTemplate.header_type === 'IMAGE' && (selectedTemplate.header_image_url || selectedTemplate.header_content || selectedTemplate.imageUrl) && (
-                      <div className="rounded-xl overflow-hidden max-h-40 w-full bg-slate-100 border border-slate-200">
-                        <img src={selectedTemplate.header_image_url || selectedTemplate.header_content || selectedTemplate.imageUrl} alt="Header" className="w-full h-full object-cover" />
+                    {selectedTemplate.header_type === 'IMAGE' && (
+                      <div className="rounded-xl overflow-hidden w-full bg-slate-100 border border-slate-200">
+                        {(selectedTemplate.header_image_url || selectedTemplate.header_content || selectedTemplate.imageUrl) ? (
+                          <img
+                            src={selectedTemplate.header_image_url || selectedTemplate.header_content || selectedTemplate.imageUrl}
+                            alt="Header"
+                            className="w-full max-h-40 object-cover"
+                          />
+                        ) : (
+                          <div className="h-24 flex items-center justify-center text-[9px] font-mono text-slate-400">
+                            IMAGE HEADER
+                          </div>
+                        )}
                       </div>
                     )}
                     {selectedTemplate.header_type === 'TEXT' && (selectedTemplate.header_text || selectedTemplate.header_content) && (
@@ -634,9 +662,9 @@ export default function WhatsappBlast() {
 
                       return pButtons.length > 0 ? (
                         <div className="space-y-1 pt-1.5 border-t border-slate-100">
-                          {pButtons.map((btn, i) => (
+                          {pButtons.filter(btn => btn && (btn.text || btn.button_text)).map((btn, i) => (
                             <div key={i} className="p-1.5 rounded-lg bg-slate-50 border border-slate-200 text-center text-[10px] font-bold text-sky-600 flex items-center justify-center gap-1.5">
-                              <span>{btn.text}</span>
+                              <span>{btn.text || btn.button_text}</span>
                             </div>
                           ))}
                         </div>

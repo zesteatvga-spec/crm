@@ -18,13 +18,33 @@ const toSendPhone = (phone) => {
 const toDbPhone = (phone) => toSendPhone(phone);
 
 // ── Meta Template start ───────────────────────────────────────────────────────
-const startMetaTemplate = async (phone, template) => {
+const startMetaTemplate = async (phone, template, options = {}) => {
   const sp = toSendPhone(phone);
 
   const contact = await Contact.findOne({ phone: sp });
   if (contact?.optedOut) { console.log(`⛔ Skipping opted-out: ${sp}`); return; }
 
   const name  = contact?.name  || 'Customer';
+  const isAuthentication = String(template.category || '').toUpperCase() === 'AUTHENTICATION';
+  // AUTHENTICATION templates carry a one-time code, supplied per recipient by
+  // the caller. It must be the same value in the body and in the copy-code
+  // button, otherwise the button copies nothing (or the wrong string).
+  const otpCode = String(options.otpCode || '').trim();
+
+  if (isAuthentication) {
+    if (!otpCode) {
+      const err = new Error(
+        'This is an AUTHENTICATION template — the one-time code must be provided before sending.'
+      );
+      err.status = 400;
+      throw err;
+    }
+    if (!/^\S{4,10}$/.test(otpCode)) {
+      const err = new Error('The one-time code must be 4-10 characters with no spaces.');
+      err.status = 400;
+      throw err;
+    }
+  }
   
   // Construct components for Meta API
   const components = [];
@@ -100,7 +120,25 @@ const startMetaTemplate = async (phone, template) => {
 
   // Check if template body has variables ({{1}})
   const bodyComponent = template.components?.find(c => c.type === 'BODY');
-  if (bodyComponent && bodyComponent.text && bodyComponent.text.includes('{{1}}')) {
+  if (isAuthentication) {
+    // Meta's authentication template takes exactly one body parameter: the code.
+    components.push({
+      type: 'body',
+      parameters: [
+        { type: 'text', text: otpCode }
+      ]
+    });
+    // The OTP button (COPY_CODE / ONE_TAP / ZERO_TAP) is addressed as index 0 and
+    // receives the same code as a button parameter.
+    components.push({
+      type: 'button',
+      sub_type: 'url',
+      index: '0',
+      parameters: [
+        { type: 'text', text: otpCode }
+      ]
+    });
+  } else if (bodyComponent && bodyComponent.text && bodyComponent.text.includes('{{1}}')) {
     components.push({
       type: 'body',
       parameters: [
@@ -114,8 +152,7 @@ const startMetaTemplate = async (phone, template) => {
     // Marketing Messages API (/marketing_messages) instead of /messages.
     return await sendMetaTemplate(sp, template.name, template.language, components, {
       category: template.category,
-    });
-  } catch (e) {
+    });  } catch (e) {
     console.log(`❌ Failed to send Meta Template to ${sp}:`, e.message);
     throw e;
   }

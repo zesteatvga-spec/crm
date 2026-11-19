@@ -1,0 +1,20 @@
+# Dependencies
+node_modules/
+
+# Secrets — never commit real values. Use the host's environment settings.
+.env
+.env.*
+!.env.example
+
+# Build output
+dist/
+build/
+
+# Runtime artefacts
+uploads/
+tokens/
+*.log
+
+# Editor / OS
+.DS_Store
+Thumbs.db

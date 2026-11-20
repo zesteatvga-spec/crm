@@ -409,7 +409,7 @@ const runMetaBroadcast = async (template, phoneList, options = {}) => {
       console.log(`✅ [${i + 1}/${phoneList.length}] Sent Meta Template '${template.name}' to ${cleanP} (wamid: ${wamid})`);
     } catch (e) {
       failed++;
-      console.error(`❌ [${i + 1}/${phoneList.length}] Failed ${phone}:`, e.message);
+      console.error(`❌ [${i + 1}/${phoneList.length}] Failed ${cleanP || rawPhone}:`, e.message);
     }
     // Meta allows higher limits, so delay can be smaller than Baileys
     if (i < phoneList.length - 1) await sendDelay(500); 
@@ -498,7 +498,10 @@ router.post('/send-meta', async (req, res) => {
   }
 
   res.json({ success: true, total: phoneList.length, message: 'Meta Broadcast started!' });
-  runMetaBroadcast(template, phoneList, isAuthentication ? { otpCode: code } : {});
+  // Fire-and-forget, but never let a rejection escape: on Node 24 an unhandled
+  // rejection terminates the process and takes the whole API down with it.
+  runMetaBroadcast(template, phoneList, isAuthentication ? { otpCode: code } : {})
+    .catch((err) => console.error(`❌ Meta broadcast '${template.name}' aborted:`, err.message));
 });
 
 // POST /api/template/schedule
@@ -1163,13 +1166,15 @@ const runScheduledTemplates = async () => {
     console.log(`⏰ Running scheduled broadcast: ${t.title}`);
     t.status = 'sending';
     await t.save();
-        runMetaBroadcast(t, t.contacts).then(async () => {
-      if (t.repeatDaily) {
-        const next = new Date(t.nextRunAt);
-        next.setDate(next.getDate() + 1);
-        await Template.findByIdAndUpdate(t._id, { nextRunAt: next, status: 'scheduled' });
-      }
-    });
+    runMetaBroadcast(t, t.contacts)
+      .then(async () => {
+        if (t.repeatDaily) {
+          const next = new Date(t.nextRunAt);
+          next.setDate(next.getDate() + 1);
+          await Template.findByIdAndUpdate(t._id, { nextRunAt: next, status: 'scheduled' });
+        }
+      })
+      .catch((err) => console.error(`❌ Scheduled broadcast '${t.title}' failed:`, err.message));
   }
 };
 

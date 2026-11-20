@@ -1,0 +1,1 @@
+Node.js backend providing REST APIs, WebSocket broadcasting, and Meta WhatsApp Business API integration for restaurant ordering, lead/contact management, and scheduled campaign automation.

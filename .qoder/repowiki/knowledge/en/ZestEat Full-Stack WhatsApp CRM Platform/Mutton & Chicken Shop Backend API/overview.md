@@ -1,1 +1,0 @@
-Express + Socket.io backend providing REST APIs, WebSocket broadcasting, and Meta WhatsApp Business API integration for restaurant ordering, lead/contact management, and campaign automation.

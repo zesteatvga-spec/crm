@@ -13,6 +13,13 @@
 - [whatsapp.js](file://backend/routes/whatsapp.js)
 </cite>
 
+## Update Summary
+**Changes Made**   
+- Updated WhatsApp Blast template rendering logic with enhanced mirror field handling
+- Improved image URL processing for better compatibility with Meta Cloud API responses
+- Enhanced button display formatting for more reliable template preview rendering
+- Added robust fallback mechanisms for template data normalization
+
 ## Table of Contents
 1. [Introduction](#introduction)
 2. [Project Structure](#project-structure)
@@ -25,7 +32,7 @@
 9. [Conclusion](#conclusion)
 
 ## Introduction
-This document explains the dashboard’s layout, navigation system, and module organization, then dives into key business components: Contacts management, Leads Pipeline visualization, WhatsApp messaging interface, and campaign automation features. It also documents data flow from API responses to UI updates, real-time message handling through WebSockets, user interaction patterns, state management, form handling, validation, backend integration, error handling, performance techniques, and responsive design patterns.
+This document explains the dashboard's layout, navigation system, and module organization, then dives into key business components: Contacts management, Leads Pipeline visualization, WhatsApp messaging interface, and campaign automation features. It also documents data flow from API responses to UI updates, real-time message handling through WebSockets, user interaction patterns, state management, form handling, validation, backend integration, error handling, performance techniques, and responsive design patterns.
 
 ## Project Structure
 The project is split into a React frontend under `frontend/src` and an Express backend under `backend`. The frontend app defines routes for landing, authentication, and the enterprise CRM dashboard. The dashboard itself is a multi-tab workspace with top KPI cards, a mini navigation bar, and tabbed modules such as User Management, Integrations, Leads, Employees, AI Calling, WhatsApp Gateway, Todo List, Instagram, Pay_SIP, and Settings.
@@ -237,7 +244,7 @@ Template rendering and variable replacement:
 - Helper function replaces numbered variables `{{1}}`, `{{2}}` with sample values for preview.
 
 Optimistic UI updates:
-- On sending direct or template messages, the UI immediately inserts a temporary message with status “sent”, then reconciles with server logs after a short delay.
+- On sending direct or template messages, the UI immediately inserts a temporary message with status "sent", then reconciles with server logs after a short delay.
 
 **Section sources**
 - [Whatsapp_Message.jsx:36-63](file://frontend/src/Dashboard/Whatsapp_Message.jsx#L36-L63)
@@ -248,9 +255,11 @@ Optimistic UI updates:
 Key responsibilities:
 - Load templates, leads, and contacts concurrently.
 - Select recipients from either contacts or leads with search and filter controls.
-- Preview personalized message body using selected recipient’s name.
+- Preview personalized message body using selected recipient's name.
 - Send single test message to a phone number.
 - Dispatch batch blast to selected recipients with result reporting.
+
+**Updated** Enhanced template rendering logic with improved mirror field usage, better image URL handling, and enhanced button display formatting.
 
 Data flow example:
 - Trigger blast sends POST `/api/leads/whatsapp-blast` with template name, language, lead_ids, and sample_values; backend returns success/failure counts.
@@ -269,9 +278,21 @@ B->>B : Show blast result card + toast
 **Diagram sources**
 - [WhatsappBlast.jsx:276-327](file://frontend/src/Dashboard/WhatsappBlast.jsx#L276-L327)
 
+Template Processing Enhancements:
+- **Mirror Field Handling**: Improved logic for determining template header types by prioritizing mirrored `header_type` values over component format, with proper fallback to component-based detection.
+- **Image URL Processing**: Enhanced image URL validation that properly handles HTTPS URLs, relative paths, and backend upload paths with appropriate base URL resolution.
+- **Button Display Formatting**: Robust button parsing that handles both string JSON and array formats, with fallback mechanisms for malformed data.
+
+Template Data Normalization:
+- Processes Meta Cloud API responses with multiple fallback strategies for different data structures.
+- Handles various header types (IMAGE, TEXT, NONE) with proper content extraction.
+- Supports both mirrored template data and raw component structures.
+
 **Section sources**
 - [WhatsappBlast.jsx:67-147](file://frontend/src/Dashboard/WhatsappBlast.jsx#L67-L147)
 - [WhatsappBlast.jsx:247-327](file://frontend/src/Dashboard/WhatsappBlast.jsx#L247-L327)
+- [WhatsappBlast.jsx:81-131](file://frontend/src/Dashboard/WhatsappBlast.jsx#L81-L131)
+- [WhatsappBlast.jsx:620-675](file://frontend/src/Dashboard/WhatsappBlast.jsx#L620-L675)
 
 ## Dependency Analysis
 - Frontend routing: App.jsx defines routes for landing, auth, and dashboard.
@@ -312,6 +333,7 @@ Routes --> Models["models/*"]
 - Local storage caching: active tab, WhatsApp view mode, read timestamps, and integration configs are cached to reduce re-fetching.
 - Pagination: Contacts and Leads use client-side pagination to limit DOM size.
 - Conditional rendering: heavy components render only when their tab is active.
+- Template processing optimization: enhanced template data normalization reduces redundant computations and improves rendering performance.
 
 [No sources needed since this section provides general guidance]
 
@@ -327,11 +349,20 @@ Common issues and strategies:
   - Enforce 10-digit Indian mobile numbers and email formats; surface inline errors and prevent submission until valid.
 - Error handling:
   - Display toast messages for success and error states; avoid blocking UI during network requests; provide retry options where applicable.
+- Template rendering issues:
+  - Check mirror field values and ensure proper fallback handling for different template data structures.
+  - Verify image URL formats and backend path resolution for uploaded media.
+  - Validate button data structure compatibility between string JSON and array formats.
 
 **Section sources**
 - [api.js:19-29](file://frontend/src/services/api.js#L19-L29)
 - [Whatsapp_Message.jsx:301-368](file://frontend/src/Dashboard/Whatsapp_Message.jsx#L301-L368)
 - [whatsapp.js:38-76](file://backend/routes/whatsapp.js#L38-L76)
+- [WhatsappBlast.jsx:81-131](file://frontend/src/Dashboard/WhatsappBlast.jsx#L81-L131)
 
 ## Conclusion
-The dashboard integrates a robust multi-module CRM experience with strong emphasis on real-time communication and automation. Contacts and Leads modules provide comprehensive CRUD, validation, and bulk operations. The WhatsApp messaging interface combines template management, live chat, and WebSocket-driven updates for a responsive user experience. Campaign automation streamlines outreach by selecting templates and recipients, previewing personalization, and dispatching blasts with clear results. The architecture leverages concurrent API calls, local caching, optimistic UI updates, and structured error handling to deliver a performant and user-friendly platform.
+The dashboard integrates a robust multi-module CRM experience with strong emphasis on real-time communication and automation. Contacts and Leads modules provide comprehensive CRUD, validation, and bulk operations. The WhatsApp messaging interface combines template management, live chat, and WebSocket-driven updates for a responsive user experience. Campaign automation streamlines outreach by selecting templates and recipients, previewing personalization, and dispatching blasts with clear results. 
+
+**Enhanced Template Processing**: The latest improvements to the WhatsApp Blast component include sophisticated template data normalization that handles diverse Meta Cloud API response formats, robust image URL processing with proper fallback mechanisms, and resilient button display formatting that accommodates various data structures. These enhancements ensure reliable template rendering across different deployment scenarios and data sources.
+
+The architecture leverages concurrent API calls, local caching, optimistic UI updates, and structured error handling to deliver a performant and user-friendly platform. The enhanced template processing capabilities further strengthen the system's reliability and maintainability.

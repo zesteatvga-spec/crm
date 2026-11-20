@@ -20,11 +20,10 @@
 
 ## Update Summary
 **Changes Made**
-- Added comprehensive OTP (One-Time Password) support for authentication templates
-- Enhanced Meta API integration with Direct Send capabilities and improved error handling
-- Implemented sophisticated media handling supporting multiple image sources including Cloudinary
-- Expanded conversation flow automation with advanced state management
-- Improved template validation and component building with better Meta compliance
+- Enhanced template synchronization with improved mirror field system that properly handles Meta component arrays
+- Added comprehensive mirror field extraction from raw Meta components to prevent stale defaults
+- Improved template processing pipeline with better component array validation and normalization
+- Updated template synchronization workflow to rebuild mirror fields during Meta sync operations
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -265,6 +264,36 @@ SendToMeta --> LogResult["Log Result & Emit Events"]
 - [conversationFlow.js:123-140](file://backend/utils/conversationFlow.js#L123-L140)
 - [templateBuilder.js:253-263](file://backend/utils/templateBuilder.js#L253-L263)
 - [templateBuilder.js:571-581](file://backend/utils/templateBuilder.js#L571-L581)
+
+### Enhanced Mirror Field System for Template Synchronization
+**Updated** The template synchronization system now includes an enhanced mirror field mechanism that properly handles Meta component arrays and prevents stale defaults.
+
+The mirror field system addresses a critical issue where template records imported directly from Meta would retain schema defaults ('NONE' and []) instead of properly reflecting the actual component structure. This caused preview rendering issues where templates appeared empty even though they contained valid headers, body text, and buttons.
+
+Key improvements:
+- **Mirror field extraction**: New `mirrorFromComponents` function extracts friendly fields from raw Meta component arrays
+- **Stale default prevention**: Sync operations now rebuild mirror fields to ensure consistency between raw components and display fields
+- **Comprehensive component parsing**: Handles HEADER, BODY, FOOTER, and BUTTONS components with proper type detection
+- **Image URL validation**: Filters out internal Meta handles and only accepts valid HTTP(S) URLs for header images
+
+```mermaid
+flowchart TD
+Start(["Template Sync from Meta"]) --> ExtractComponents["Extract Raw Components Array"]
+ExtractComponents --> ParseMirror["Parse Mirror Fields<br/>(header_type, body_text, etc.)"]
+ParseMirror --> ValidateFields["Validate & Normalize Fields"]
+ValidateFields --> RebuildRecord["Rebuild Template Record<br/>with Fresh Mirror Fields"]
+RebuildRecord --> PreventStale["Prevent Stale Defaults<br/>(NONE, [], '')"]
+PreventStale --> SaveTemplate["Save to Database"]
+```
+
+**Diagram sources**
+- [template.js:201-232](file://backend/routes/template.js#L201-L232)
+- [template.js:967-970](file://backend/routes/template.js#L967-L970)
+
+**Section sources**
+- [template.js:201-232](file://backend/routes/template.js#L201-L232)
+- [template.js:967-970](file://backend/routes/template.js#L967-L970)
+- [Template.js:42-50](file://backend/models/Template.js#L42-L50)
 
 ### Sophisticated Media Handling
 The system now supports multiple image sources with intelligent fallback mechanisms:
@@ -593,6 +622,9 @@ IO --> Clients["Frontend Clients"]
 - Memory management:
   - Temporary files are properly cleaned up to prevent disk space issues.
   - Conversation sessions are managed efficiently with proper cleanup.
+- Mirror field optimization:
+  - Mirror field rebuilding during sync operations ensures data consistency without requiring full template reprocessing.
+  - Efficient component array parsing reduces memory overhead during template synchronization.
 
 ## Troubleshooting Guide
 Common Meta API issues:
@@ -611,6 +643,9 @@ Common Meta API issues:
 - OTP-related issues:
   - Authentication templates require valid OTP codes (4-10 characters, no spaces).
   - Only single recipient allowed for authentication template broadcasts.
+- Mirror field issues:
+  - If templates appear empty in the dashboard despite having valid components, run template sync to rebuild mirror fields.
+  - Check that template sync properly extracts header_type, body_text, footer_text, and buttons from Meta components.
 
 Authentication with Meta tokens:
 - Authorization header uses Bearer token for Graph API calls.
@@ -623,6 +658,7 @@ Debugging strategies:
 - Use `/api/whatsapp/messages` to retrieve recent logs and filter by phone.
 - Monitor Socket.io events for real-time diagnostics.
 - Check Cloudinary integration status for media-related issues.
+- Verify mirror field consistency by comparing components array with display fields.
 
 Error handling patterns:
 - Services throw errors with structured messages; routes convert them to HTTP responses.
@@ -638,4 +674,6 @@ Error handling patterns:
 - [conversationFlow.js:34-47](file://backend/utils/conversationFlow.js#L34-L47)
 
 ## Conclusion
-The WhatsApp integration layer provides a robust foundation for interacting with Meta's WhatsApp Business API. It manages credentials securely, synchronizes templates with Meta, processes incoming webhooks reliably, and supports real-time messaging through Socket.io. The enhanced system now includes comprehensive OTP support for authentication workflows, sophisticated media handling across multiple sources, and improved Meta API integration with Direct Send capabilities. Template versioning follows Meta's constraints by recreating templates rather than editing them. Operational concerns such as rate limiting, media handling, and error reporting are addressed throughout the services and routes. For production deployments, ensure secure credential management, monitor Meta API quotas, implement comprehensive logging and alerting around webhook processing and template approvals, and configure Cloudinary for reliable media hosting.
+The WhatsApp integration layer provides a robust foundation for interacting with Meta's WhatsApp Business API. It manages credentials securely, synchronizes templates with Meta, processes incoming webhooks reliably, and supports real-time messaging through Socket.io. The enhanced system now includes comprehensive OTP support for authentication workflows, sophisticated media handling across multiple sources, and improved Meta API integration with Direct Send capabilities. 
+
+The latest enhancement introduces an advanced mirror field system that properly handles Meta component arrays and prevents stale defaults during template synchronization. This ensures that template previews render correctly with proper headers, body text, and buttons extracted from the raw Meta components. Template versioning follows Meta's constraints by recreating templates rather than editing them. Operational concerns such as rate limiting, media handling, and error reporting are addressed throughout the services and routes. For production deployments, ensure secure credential management, monitor Meta API quotas, implement comprehensive logging and alerting around webhook processing and template approvals, and configure Cloudinary for reliable media hosting.

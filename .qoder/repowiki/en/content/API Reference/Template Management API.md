@@ -192,7 +192,7 @@ Use cases:
 **New Section**
 
 **Section sources**
-- [template.js:784-788](file://backend/routes/template.js#L784-L788)
+- [template.js:817-821](file://backend/routes/template.js#L817-L821)
 - [templateBuilder.js:543-593](file://backend/utils/templateBuilder.js#L543-L593)
 
 ### Delete Templates (DELETE /api/template/:id)
@@ -207,14 +207,14 @@ Use cases:
 - Includes current WABA identifier.
 
 **Section sources**
-- [template.js:732-741](file://backend/routes/template.js#L732-L741)
+- [template.js:824-833](file://backend/routes/template.js#L824-L833)
 
 ### Import Meta Template (POST /api/template/import-meta)
 - Imports a single Meta template by its ID into the local database.
 - Prevents duplicate imports.
 
 **Section sources**
-- [template.js:789-830](file://backend/routes/template.js#L789-L830)
+- [template.js:881-926](file://backend/routes/template.js#L881-L926)
 
 ### Sync All Meta Templates (POST /api/template/sync-meta OR /api/template/sync)
 - Fetches all templates from Meta and synchronizes them into the database.
@@ -223,7 +223,7 @@ Use cases:
 - Cleans up outdated templates not present on Meta.
 
 **Section sources**
-- [template.js:832-950](file://backend/routes/template.js#L832-L950)
+- [template.js:928-1059](file://backend/routes/template.js#L928-L1059)
 - [metaTemplateService.js:163-179](file://backend/utils/metaTemplateService.js#L163-L179)
 
 ### Check Meta Approval Status (GET /api/template/meta/:id/status)
@@ -231,7 +231,7 @@ Use cases:
 - Polls Meta for current status and updates local metaStatus.
 
 **Section sources**
-- [template.js:952-979](file://backend/routes/template.js#L952-L979)
+- [template.js:1064-1091](file://backend/routes/template.js#L1064-L1091)
 - [metaTemplateService.js:181-190](file://backend/utils/metaTemplateService.js#L181-L190)
 
 ### Send Approved Templates (POST /api/template/send-meta)
@@ -245,7 +245,7 @@ Broadcast behavior:
 - Updates template totals and last run time.
 
 **Section sources**
-- [template.js:319-391](file://backend/routes/template.js#L319-L391)
+- [template.js:430-502](file://backend/routes/template.js#L430-L502)
 - [template.js:397-441](file://backend/routes/template.js#L397-L441)
 
 ### Schedule Broadcasts (POST /api/template/schedule)
@@ -253,7 +253,7 @@ Broadcast behavior:
 - Supports daily repeats and day-of-week selection.
 
 **Section sources**
-- [template.js:444-486](file://backend/routes/template.js#L444-L486)
+- [template.js:504-547](file://backend/routes/template.js#L504-L547)
 
 ### Manage Schedules (GET /api/template/schedules, PUT /api/template/schedule/:id/toggle, DELETE /api/template/schedule/:id)
 - Lists scheduled templates.
@@ -261,20 +261,20 @@ Broadcast behavior:
 - Deletes scheduled entries.
 
 **Section sources**
-- [template.js:488-504](file://backend/routes/template.js#L488-L504)
+- [template.js:549-565](file://backend/routes/template.js#L549-L565)
 
 ### Stats Summary (GET /api/template/stats/summary)
 - Aggregates sent/delivered/read/failed counts from message logs.
 - Counts active templates, total contacts, and campaigns.
 
 **Section sources**
-- [template.js:981-1044](file://backend/routes/template.js#L981-L1044)
+- [template.js:1093-1156](file://backend/routes/template.js#L1093-L1156)
 
 ### Scheduled Runner
 - Background routine that runs due scheduled templates and updates repeat schedules.
 
 **Section sources**
-- [template.js:1046-1065](file://backend/routes/template.js#L1046-L1065)
+- [template.js:1158-1176](file://backend/routes/template.js#L1158-L1176)
 
 ## Dependency Analysis
 ```mermaid
@@ -328,7 +328,7 @@ Error response patterns:
 **Updated** Enhanced error responses provide structured metadata for better debugging and user experience.
 
 **Section sources**
-- [template.js:222-247](file://backend/routes/template.js#L222-L247)
+- [template.js:255-275](file://backend/routes/template.js#L255-L275)
 - [template.js:547-692](file://backend/routes/template.js#L547-L692)
 - [template.js:747-786](file://backend/routes/template.js#L747-L786)
 - [templateBuilder.js:424-496](file://backend/utils/templateBuilder.js#L424-L496)
@@ -429,7 +429,7 @@ boolean isActive
 **New Section**
 
 **Section sources**
-- [template.js:784-788](file://backend/routes/template.js#L784-L788)
+- [template.js:817-821](file://backend/routes/template.js#L817-L821)
 - [templateBuilder.js:543-593](file://backend/utils/templateBuilder.js#L543-L593)
 
 #### Insert Dynamic Content at Send Time
@@ -437,7 +437,7 @@ boolean isActive
 - The broadcast runner logs the template text and associated metadata.
 
 **Section sources**
-- [template.js:319-391](file://backend/routes/template.js#L319-L391)
+- [template.js:430-502](file://backend/routes/template.js#L430-L502)
 
 ### Error Handling Reference
 - Validation errors: field-level messages and warnings returned by the builder.
@@ -449,7 +449,7 @@ boolean isActive
 **Section sources**
 - [templateBuilder.js:408-418](file://backend/utils/templateBuilder.js#L408-L418)
 - [templateBuilder.js:424-496](file://backend/utils/templateBuilder.js#L424-L496)
-- [template.js:222-247](file://backend/routes/template.js#L222-L247)
+- [template.js:255-275](file://backend/routes/template.js#L255-L275)
 
 ### Category Presets Structure
 The presets endpoint returns a comprehensive structure for template initialization:

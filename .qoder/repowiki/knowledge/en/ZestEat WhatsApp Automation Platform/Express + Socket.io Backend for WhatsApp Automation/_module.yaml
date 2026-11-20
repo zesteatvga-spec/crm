@@ -1,6 +1,6 @@
 schema_version: 1
 module_path: backend
-title: Mutton & Chicken Shop Backend API
+title: Express + Socket.io Backend for WhatsApp Automation
 scope:
     - backend/
 source_files: []

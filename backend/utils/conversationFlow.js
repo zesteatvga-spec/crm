@@ -17,6 +17,52 @@ const toSendPhone = (phone) => {
 
 const toDbPhone = (phone) => toSendPhone(phone);
 
+const firstFilled = (...candidates) => {
+  for (const candidate of candidates) {
+    const value = candidate === undefined || candidate === null ? '' : String(candidate).trim();
+    if (value) return value;
+  }
+  return '';
+};
+
+/**
+ * Meta counts body parameters by position, not by usage: a body containing
+ * `{{1}} ... {{4}}` demands exactly four parameters. Sending one raises
+ * 132000 "number of localizable_params (1) does not match the expected (4)".
+ */
+const countBodyVariables = (text) => {
+  const matches = String(text || '').match(/\{\{\s*(\d+)\s*\}\}/g) || [];
+  const indexes = matches
+    .map((token) => Number(String(token).replace(/[^\d]/g, '')))
+    .filter((index) => index > 0);
+  return indexes.length ? Math.max(...indexes) : 0;
+};
+
+/**
+ * Builds one text parameter per {{n}} slot in the body.
+ *
+ * `options.bodyParams` wins when a caller maps real values per recipient. With
+ * nothing mapped — the normal blast case — {{1}} becomes the contact's name and
+ * the remaining slots fall back to the samples captured at creation time.
+ */
+const buildBodyParameters = (count, contactName, sampleValues = [], explicit = []) => {
+  const samples = Array.isArray(sampleValues) ? sampleValues : [];
+  const supplied = Array.isArray(explicit) ? explicit : [];
+  const parameters = [];
+
+  for (let index = 0; index < count; index++) {
+    const value = firstFilled(
+      supplied[index],
+      index === 0 ? contactName : '',
+      samples[index],
+      'N/A'
+    );
+    parameters.push({ type: 'text', text: value });
+  }
+
+  return parameters;
+};
+
 // ── Meta Template start ───────────────────────────────────────────────────────
 const startMetaTemplate = async (phone, template, options = {}) => {
   const sp = toSendPhone(phone);
@@ -118,6 +164,18 @@ const startMetaTemplate = async (phone, template, options = {}) => {
     });
   }
 
+  // A text header may hold a single {{1}} variable, and then it needs its own
+  // parameter — Meta rejects the send if the header parameter is missing.
+  const textHeader = template.components?.find(
+    (c) => c.type === 'HEADER' && String(c.format || '').toUpperCase() === 'TEXT' && /\{\{\s*1\s*\}\}/.test(c.text || '')
+  );
+  if (textHeader) {
+    components.push({
+      type: 'header',
+      parameters: [{ type: 'text', text: name }]
+    });
+  }
+
   // Check if template body has variables ({{1}})
   const bodyComponent = template.components?.find(c => c.type === 'BODY');
   if (isAuthentication) {
@@ -138,13 +196,19 @@ const startMetaTemplate = async (phone, template, options = {}) => {
         { type: 'text', text: otpCode }
       ]
     });
-  } else if (bodyComponent && bodyComponent.text && bodyComponent.text.includes('{{1}}')) {
-    components.push({
-      type: 'body',
-      parameters: [
-        { type: 'text', text: name }
-      ]
-    });
+  } else if (bodyComponent && bodyComponent.text) {
+    const paramCount = countBodyVariables(bodyComponent.text);
+    if (paramCount > 0) {
+      components.push({
+        type: 'body',
+        parameters: buildBodyParameters(
+          paramCount,
+          name,
+          template.sample_values,
+          options.bodyParams
+        )
+      });
+    }
   }
 
   try {

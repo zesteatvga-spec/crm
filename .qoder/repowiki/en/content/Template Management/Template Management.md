@@ -13,12 +13,12 @@
 
 ## Update Summary
 **Changes Made**
-- Added comprehensive documentation for the new templateBuilder.js utility
-- Updated template creation and editing workflows to reflect centralized validation and normalization
-- Enhanced category preset system documentation with backend-driven presets
-- Updated template recreation workflow documentation
-- Added detailed validation rules and error handling documentation
-- Enhanced preview and testing capabilities documentation
+- Added comprehensive documentation for the enhanced template mirror field system
+- Updated template creation and editing workflows to reflect centralized validation and normalization via templateBuilder.js
+- Enhanced category preset system documentation with new backend-driven presets API endpoint
+- Updated template recreation workflow documentation with improved error handling
+- Added detailed validation rules and comprehensive error handling documentation
+- Enhanced preview and testing capabilities documentation with standardized preset structures
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -35,6 +35,7 @@
 This document explains the template management system for WhatsApp messaging, covering:
 - Template creation, editing, and synchronization with Meta's template system
 - Centralized template normalization, validation, and category presets via templateBuilder.js
+- Comprehensive mirror field population logic for consistent data representation
 - Approval workflows and status tracking
 - Parameterized messages and dynamic content insertion
 - Preview and testing capabilities
@@ -42,13 +43,13 @@ This document explains the template management system for WhatsApp messaging, co
 - Versioning considerations and rollback strategies
 - Performance optimization recommendations
 
-The system supports text templates, media attachments (images, videos, documents), and interactive buttons. Templates are stored locally and synchronized with Meta, where approval is required before sending. The new templateBuilder.js utility provides comprehensive template normalization, validation, category presets, and recreation workflows.
+The system supports text templates, media attachments (images, videos, documents), and interactive buttons. Templates are stored locally and synchronized with Meta, where approval is required before sending. The new templateBuilder.js utility provides comprehensive template normalization, validation, category presets, and recreation workflows with enhanced error handling.
 
 ## Project Structure
 The template feature spans backend models, routes, utilities, and frontend dashboards:
-- Backend model defines template schema and fields
+- Backend model defines template schema and fields with comprehensive mirror field support
 - Routes expose endpoints for CRUD, sync, send, schedule, and stats
-- **New**: templateBuilder.js provides centralized template normalization, validation, and category presets
+- **Enhanced**: templateBuilder.js provides centralized template normalization, validation, category presets, and recreation workflows
 - Utilities handle Meta API interactions and message composition
 - Frontend provides editor, preview, bulk blast, and live chat integration
 
@@ -92,20 +93,20 @@ RT_Tpl --> UT_Cflow
 - [WhatsappBlast.jsx:67-113](file://frontend/src/Dashboard/WhatsappBlast.jsx#L67-L113)
 
 ## Core Components
-- **Template Model**: Stores both legacy fields and Meta-specific fields, including components, metaTemplateId, metaStatus, and WABA association.
-- **Template Routes**: Provide endpoints to create/update/import/sync templates, check status, send templates, schedule broadcasts, and fetch stats.
-- **Template Builder Utility**: **NEW** - Centralized template normalization, validation, category presets, and recreation workflows.
+- **Template Model**: Stores both legacy fields and Meta-specific fields, including comprehensive mirror fields (header_type, header_text, header_image_url, body_text, footer_text, sample_values, buttons), metaTemplateId, metaStatus, and WABA association.
+- **Template Routes**: Provide endpoints to create/update/import/sync templates, check status, send templates, schedule broadcasts, fetch stats, and access presets.
+- **Template Builder Utility**: **Enhanced** - Centralized template normalization, validation, category presets, recreation workflows, and comprehensive error handling.
 - **Meta Template Service**: Handles Meta API calls for creating templates, fetching all templates, checking status, and uploading media.
 - **Conversation Flow**: Composes parameters for header media and body variables, then sends via Meta Cloud API.
 - **Frontend Editor and Blast UI**: Provides template creation/editing, preview, parameter substitution, sync, and bulk dispatch.
 
 Key responsibilities:
 - Create or update templates locally and on Meta using centralized validation
-- Synchronize templates from Meta into local storage
+- Synchronize templates from Meta into local storage with comprehensive mirror field population
 - Validate and sanitize components (variables, buttons, headers) through templateBuilder.js
 - Send approved templates to contacts with dynamic content
 - Schedule and run broadcasts
-- **NEW**: Provide category presets and validation rules to frontend
+- **Enhanced**: Provide category presets and validation rules via dedicated API endpoint
 
 **Section sources**
 - [Template.js:1-74](file://backend/models/Template.js#L1-L74)
@@ -118,8 +119,8 @@ Key responsibilities:
 
 ## Architecture Overview
 The template lifecycle involves:
-- **Creation**: Frontend builds components; backend uses templateBuilder.js for normalization and validation; submits to Meta; stores local copy with metaTemplateId and metaStatus.
-- **Sync**: Fetch all templates from Meta; deduplicate; auto-host images to Cloudinary; persist locally.
+- **Creation**: Frontend builds components; backend uses templateBuilder.js for normalization and validation; submits to Meta; stores local copy with comprehensive mirror fields and metaTemplateId.
+- **Sync**: Fetch all templates from Meta; deduplicate; auto-host images to Cloudinary; persist locally with full mirror field population.
 - **Approval Workflow**: Check status against Meta; enforce APPROVED state before sending.
 - **Sending**: Compose parameters (header media, body variables); send via Meta Cloud API; log results.
 - **Preview/Test**: Render preview with sample values; test single send; bulk blast to selected recipients.
@@ -137,9 +138,9 @@ RT->>TB : toDefinition(payload) + validateDefinition()
 TB-->>RT : Normalized definition + validation errors
 RT->>MS : createTemplateOnMeta(name, language, category, components)
 MS-->>RT : {id, status}
-RT->>DB : Save template with metaTemplateId, metaStatus
+RT->>DB : Save template with mirror fields, metaTemplateId, metaStatus
 RT-->>FE : Created template
-FE->>RT : POST /api/template/presets
+FE->>RT : GET /api/template/presets
 RT->>TB : CATEGORY_PRESETS + RULES
 TB-->>RT : Presets and validation rules
 RT-->>FE : Category presets and limits
@@ -147,7 +148,7 @@ RT-->>FE : Category presets and limits
 
 **Diagram sources**
 - [template.js:806-845](file://backend/routes/template.js#L806-L845)
-- [template.js:786-788](file://backend/routes/template.js#L786-L788)
+- [template.js:817-821](file://backend/routes/template.js#L817-L821)
 - [templateBuilder.js:183-245](file://backend/utils/templateBuilder.js#L183-L245)
 - [templateBuilder.js:310-419](file://backend/utils/templateBuilder.js#L310-L419)
 - [templateBuilder.js:543-581](file://backend/utils/templateBuilder.js#L543-L581)
@@ -155,14 +156,16 @@ RT-->>FE : Category presets and limits
 ## Detailed Component Analysis
 
 ### Template Model and Data Structure
-The Template model includes:
+The Template model includes comprehensive mirror fields for consistent data representation:
 - Meta-specific fields: name, category, language, components, metaTemplateId, metaStatus, wabaId
+- **Enhanced mirror fields**: header_type, header_text, header_image_url, body_text, footer_text, sample_values, buttons
 - Legacy fields: title, message, footer, imageUrl, mediaId
 - Stats and scheduling: contacts, totalSent, totalFailed, interested, notInterested, ordersGenerated, status, sentAt, isScheduled, scheduleTime, repeatDaily, scheduleDays, lastRunAt, nextRunAt, isActive
 
 Complexity:
 - O(1) access to fields; array-based components allow flexible structure.
 - Deduplication during sync uses $or queries by metaTemplateId or name.
+- Mirror fields ensure consistent UI rendering without parsing raw components.
 
 ```mermaid
 classDiagram
@@ -174,6 +177,13 @@ class Template {
 +string metaTemplateId
 +string metaStatus
 +string wabaId
++string header_type
++string header_text
++string header_image_url
++string body_text
++string footer_text
++Array sample_values
++Array buttons
 +string title
 +string message
 +string footer
@@ -203,24 +213,24 @@ class Template {
 **Section sources**
 - [Template.js:1-74](file://backend/models/Template.js#L1-L74)
 
-### Template Creation and Editing with Template Builder
-**Updated** - Now uses centralized templateBuilder.js for normalization and validation
+### Template Creation and Editing with Enhanced Template Builder
+**Updated** - Now uses centralized templateBuilder.js for normalization, validation, and comprehensive error handling
 
 - Create endpoint: POST /api/template/meta
   - Accepts name, language, category, components, optional media file
   - Uses templateBuilder.js to normalize and validate input
   - Uploads media to Meta; updates HEADER component example.handle
-  - Saves local template with metaTemplateId and metaStatus
+  - Saves local template with comprehensive mirror fields, metaTemplateId, and metaStatus
 - Update endpoint: PUT /api/template/:id
   - Supports updating name, category, language, components, image URL
   - Handles JSON string parsing for components
-  - Uses templateBuilder.js for validation and normalization
+  - Uses templateBuilder.js for validation and normalization with enhanced error handling
 
 Validation and sanitization through templateBuilder.js:
 - Body variables normalized to {{1}}, {{2}}...
 - Buttons sanitized to max 3 entries; phone numbers and URLs normalized
 - Category presets provided for MARKETING, UTILITY, AUTHENTICATION
-- Comprehensive validation rules enforced
+- Comprehensive validation rules enforced with detailed error messages
 
 ```mermaid
 flowchart TD
@@ -232,7 +242,7 @@ MediaCheck --> |No| SkipMedia["Skip media upload"]
 UploadMeta --> BuildComponents["Build components with templateBuilder.js<br/>buildComponents()"]
 SkipMedia --> BuildComponents
 BuildComponents --> SubmitMeta["POST to Meta Templates API"]
-SubmitMeta --> SaveLocal["Save template with metaTemplateId,<br/>metaStatus, imageUrl, mediaId"]
+SubmitMeta --> SaveLocal["Save template with mirror fields,<br/>metaTemplateId, metaStatus"]
 SaveLocal --> End(["Created"])
 ```
 
@@ -248,14 +258,15 @@ SaveLocal --> End(["Created"])
 - [templateBuilder.js:252-299](file://backend/utils/templateBuilder.js#L252-L299)
 - [templateBuilder.js:310-419](file://backend/utils/templateBuilder.js#L310-L419)
 
-### Category Presets and Validation Rules
-**NEW** - Comprehensive category system with backend-driven presets
+### Enhanced Category Presets and Validation Rules
+**Enhanced** - Comprehensive category system with backend-driven presets via dedicated API endpoint
 
 The templateBuilder.js provides:
 - **Category Presets**: Predefined templates for MARKETING, UTILITY, and AUTHENTICATION categories
 - **Validation Rules**: Enforced limits for text lengths, button counts, and field constraints
 - **Normalization Functions**: Standardize names, categories, languages, and button types
 - **Error Handling**: Rich error messages with hints for common Meta API issues
+- **Dedicated API Endpoint**: GET /api/template/presets returns presets, rules, and limits
 
 Category presets include:
 - **MARKETING**: Promotional templates with image headers, promotional body text, and call-to-action buttons
@@ -273,17 +284,17 @@ F --> G["Form pre-filled with preset data"]
 ```
 
 **Diagram sources**
-- [template.js:786-788](file://backend/routes/template.js#L786-L788)
+- [template.js:817-821](file://backend/routes/template.js#L817-L821)
 - [templateBuilder.js:543-581](file://backend/utils/templateBuilder.js#L543-L581)
 - [templateBuilder.js:583-593](file://backend/utils/templateBuilder.js#L583-L593)
 
 **Section sources**
 - [templateBuilder.js:543-581](file://backend/utils/templateBuilder.js#L543-L581)
 - [templateBuilder.js:583-593](file://backend/utils/templateBuilder.js#L583-L593)
-- [template.js:786-788](file://backend/routes/template.js#L786-L788)
+- [template.js:817-821](file://backend/routes/template.js#L817-L821)
 
-### Template Recreation Workflow
-**NEW** - Robust template recreation system for Meta-immutability
+### Enhanced Template Recreation Workflow
+**Enhanced** - Robust template recreation system for Meta-immutability with improved error handling
 
 Since Meta doesn't allow editing submitted templates, the system implements a recreation workflow:
 - Detect when content changes require recreation vs. simple updates
@@ -291,6 +302,7 @@ Since Meta doesn't allow editing submitted templates, the system implements a re
 - Submit new version with updated content
 - Handle failures gracefully by keeping local drafts
 - Support both explicit recreation requests and automatic detection
+- Enhanced error handling with detailed Meta error decoding
 
 ```mermaid
 flowchart TD
@@ -304,7 +316,7 @@ F --> |Yes| H["DELETE old template on Meta"]
 H --> I["SUBMIT new template"]
 I --> J{"Success?"}
 J --> |Yes| K["Save new template"]
-J --> |No| L["Keep local draft"]
+J --> |No| L["Keep local draft with enhanced error info"]
 ```
 
 **Diagram sources**
@@ -316,13 +328,23 @@ J --> |No| L["Keep local draft"]
 - [template.js:599-748](file://backend/routes/template.js#L599-L748)
 - [template.js:752-782](file://backend/routes/template.js#L752-L782)
 
-### Synchronization with Meta
+### Enhanced Synchronization with Meta
+**Enhanced** - Improved sync process with comprehensive mirror field population
+
 - Sync endpoint: POST /api/template/sync-meta or /api/template/sync
   - Fetches all templates from Meta
   - Deduplicates by metaTemplateId or name
   - Updates existing records or creates new ones
   - Auto-hosts header images to Cloudinary if needed
   - Cleans up outdated templates not present in Meta
+  - **Enhanced**: Populates comprehensive mirror fields using mirrorFromComponents function
+
+The mirrorFromComponents function ensures:
+- Consistent header_type, header_text, header_image_url fields
+- Proper body_text extraction from components
+- Footer text population
+- Sample values extraction
+- Button array population
 
 ```mermaid
 sequenceDiagram
@@ -336,10 +358,10 @@ MS-->>RT : [templates]
 loop For each template
 RT->>DB : Find by metaTemplateId or name
 alt Existing
-RT->>DB : Update fields (name, components, language, category, wabaId, message, footer)
+RT->>DB : Update fields with mirrorFromComponents()
 RT->>DB : Auto-host image to Cloudinary if needed
 else New
-RT->>DB : Create template with metadata
+RT->>DB : Create template with mirror fields populated
 end
 end
 RT->>DB : Delete outdated templates (not in active list)
@@ -467,7 +489,7 @@ RT-->>FE : Broadcast started
 ## Dependency Analysis
 - Template Routes depend on:
   - Template Model for persistence
-  - **NEW**: Template Builder for normalization, validation, and presets
+  - **Enhanced**: Template Builder for normalization, validation, presets, and comprehensive error handling
   - Meta Template Service for API interactions
   - Conversation Flow for composing and sending messages
   - Cloudinary service for media hosting
@@ -514,12 +536,11 @@ FE_Blast["WhatsappBlast.jsx"] --> RT
   - Index frequently queried fields (metaTemplateId, name)
 - Preview rendering:
   - Minimize re-renders by memoizing computed previews
-- **NEW**: Template builder performance:
+- **Enhanced**: Template builder performance:
   - Centralized validation reduces redundant processing
   - Category presets minimize frontend computation
   - Normalization functions optimized for common patterns
-
-[No sources needed since this section provides general guidance]
+  - Mirror field population reduces frontend parsing overhead
 
 ## Troubleshooting Guide
 Common issues and resolutions:
@@ -534,10 +555,11 @@ Common issues and resolutions:
 - Sending errors:
   - Confirm template status is APPROVED on Meta
   - Validate phone number format
-- **NEW**: Template validation errors:
+- **Enhanced**: Template validation errors:
   - Check templateBuilder.js validation rules for specific field constraints
   - Review category-specific requirements (e.g., AUTHENTICATION templates cannot have headers)
-  - Use /api/template/presets to get current validation rules and limits
+  - Use GET /api/template/presets to get current validation rules and limits
+  - Utilize enhanced error handling with detailed Meta error decoding and user-friendly messages
 
 **Section sources**
 - [metaTemplateService.js:6-21](file://backend/utils/metaTemplateService.js#L6-L21)
@@ -546,6 +568,4 @@ Common issues and resolutions:
 - [templateBuilder.js:310-419](file://backend/utils/templateBuilder.js#L310-L419)
 
 ## Conclusion
-The template management system provides a robust framework for creating, editing, and deploying WhatsApp templates with Meta integration. The new templateBuilder.js utility centralizes template normalization, validation, and category presets, providing a consistent foundation for template operations. It supports parameterized messages, media attachments, approval workflows, and bulk operations. While versioning and rollback are not explicitly implemented, the system can be extended to track historical versions and support rollbacks by leveraging the existing template model and sync mechanisms. The centralized approach ensures consistency across the application and provides better error handling and user experience.
-
-[No sources needed since this section summarizes without analyzing specific files]
+The template management system provides a robust framework for creating, editing, and deploying WhatsApp templates with Meta integration. The enhanced templateBuilder.js utility centralizes template normalization, validation, category presets, and comprehensive error handling, providing a consistent foundation for template operations. The new mirror field system ensures consistent data representation across the application, while the dedicated presets API endpoint provides standardized template structures and validation rules. It supports parameterized messages, media attachments, approval workflows, and bulk operations. While versioning and rollback are not explicitly implemented, the system can be extended to track historical versions and support rollbacks by leveraging the existing template model and sync mechanisms. The centralized approach ensures consistency across the application and provides better error handling and user experience.
